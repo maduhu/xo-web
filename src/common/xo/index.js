@@ -16,13 +16,15 @@ import throttle from 'lodash/throttle'
 import Xo from 'xo-lib'
 import { createBackoff } from 'jsonrpc-websocket-client'
 import { lastly, reflect } from 'promise-toolbox'
-import { noHostsAvailable } from 'xo-common/api-errors'
+import { forbiddenOperation, noHostsAvailable } from 'xo-common/api-errors'
 import { resolve } from 'url'
 
 import _ from '../intl'
 import invoke from '../invoke'
 import logError from '../log-error'
-import { alert, confirm } from '../modal'
+import store from 'store'
+import { getObject } from 'selectors'
+import { alert, chooseAction, confirm } from '../modal'
 import { error, info, success } from '../notification'
 import { noop, rethrow, tap, resolveId, resolveIds } from '../utils'
 import {
@@ -284,6 +286,28 @@ export const subscribeIsInstallingXosan = (pool, cb) => {
   return xosanSubscriptions[poolId](cb)
 }
 
+const missingPatchesByHost = {}
+export const subscribeHostMissingPatches = (host, cb) => {
+  const hostId = resolveId(host)
+
+  if (missingPatchesByHost[hostId] == null) {
+    missingPatchesByHost[hostId] = createSubscription(() => _call('host.listMissingPatches', { host: hostId }))
+  }
+
+  return missingPatchesByHost[hostId](cb)
+}
+subscribeHostMissingPatches.forceRefresh = host => {
+  if (host === undefined) {
+    forEach(missingPatchesByHost, subscription => subscription.forceRefresh())
+    return
+  }
+
+  const subscription = missingPatchesByHost[resolveId(host)]
+  if (subscription !== undefined) {
+    subscription.forceRefresh()
+  }
+}
+
 // System ============================================================
 
 export const apiMethods = _call('system.getMethodsInfo')
@@ -350,6 +374,7 @@ import AddHostModalBody from './add-host-modal' // eslint-disable-line import/fi
 export const addHostToPool = (pool, host) => {
   if (host) {
     return confirm({
+      icon: 'add',
       title: _('addHostModalTitle'),
       body: _('addHostModalMessage', { pool: pool.name_label, host: host.name_label })
     }).then(() =>
@@ -358,6 +383,7 @@ export const addHostToPool = (pool, host) => {
   }
 
   return confirm({
+    icon: 'add',
     title: _('addHostModalTitle'),
     body: <AddHostModalBody pool={pool} />
   }).then(
@@ -366,7 +392,13 @@ export const addHostToPool = (pool, host) => {
         error(_('addHostNoHost'), _('addHostNoHostMessage'))
         return
       }
-      _call('pool.mergeInto', { source: params.host.$pool, target: pool.id, force: true })
+      return _call('pool.mergeInto', { source: params.host.$pool, target: pool.id, force: true }).catch(error => {
+        if (error.code !== 'HOSTS_NOT_HOMOGENEOUS') {
+          throw error
+        }
+
+        error(_('addHostErrorTitle'), _('addHostNotHomogeneousErrorMessage'))
+      })
     },
     noop
   )
@@ -498,15 +530,21 @@ export const emergencyShutdownHosts = hosts => {
 }
 
 export const installHostPatch = (host, { uuid }) => (
-  _call('host.installPatch', { host: resolveId(host), patch: uuid })
+  _call('host.installPatch', { host: resolveId(host), patch: uuid })::tap(
+    () => subscribeHostMissingPatches.forceRefresh(host)
+  )
 )
 
 export const installAllHostPatches = host => (
-  _call('host.installAllPatches', { host: resolveId(host) })
+  _call('host.installAllPatches', { host: resolveId(host) })::tap(
+    () => subscribeHostMissingPatches.forceRefresh(host)
+  )
 )
 
 export const installAllPatchesOnPool = pool => (
-  _call('pool.installAllPatches', { pool: resolveId(pool) })
+  _call('pool.installAllPatches', { pool: resolveId(pool) })::tap(
+    () => subscribeHostMissingPatches.forceRefresh()
+  )
 )
 
 export const installSupplementalPack = (host, file) => {
@@ -571,8 +609,38 @@ export const unpauseContainer = (vm, container) => (
 
 // VM ----------------------------------------------------------------
 
+const chooseActionToUnblockForbiddenStartVm = props => (
+  chooseAction({
+    icon: 'alarm',
+    buttons: [
+      { label: _('cloneAndStartVM'), value: 'clone', btnStyle: 'success' },
+      { label: _('forceStartVm'), value: 'force', btnStyle: 'danger' }
+    ],
+    ...props
+  })
+)
+
+const cloneAndStartVM = async vm => (
+  _call('vm.start', { id: await cloneVm(vm) })
+)
+
 export const startVm = vm => (
-  _call('vm.start', { id: resolveId(vm) })
+  _call('vm.start', { id: resolveId(vm) }).catch(async reason => {
+    if (!forbiddenOperation.is(reason)) {
+      throw reason
+    }
+
+    const choice = await chooseActionToUnblockForbiddenStartVm({
+      body: _('blockedStartVmModalMessage'),
+      title: _('forceStartVmModalTitle')
+    })
+
+    if (choice === 'clone') {
+      return cloneAndStartVM(vm)
+    }
+
+    return _call('vm.start', { id: resolveId(vm), force: true })
+  })
 )
 
 export const startVms = vms => (
@@ -580,7 +648,52 @@ export const startVms = vms => (
     title: _('startVmsModalTitle', { vms: vms.length }),
     body: _('startVmsModalMessage', { vms: vms.length })
   }).then(
-    () => map(vms, vmId => startVm({ id: vmId })),
+    async () => {
+      const forbiddenStart = []
+      let nErrors = 0
+
+      await Promise.all(map(
+        vms,
+        id => _call('vm.start', { id }).catch(reason => {
+          if (forbiddenOperation.is(reason)) {
+            forbiddenStart.push(id)
+          } else {
+            nErrors++
+          }
+        })
+      ))
+
+      if (forbiddenStart.length === 0) {
+        if (nErrors === 0) {
+          return
+        }
+
+        return error(_('failedVmsErrorTitle'), _('failedVmsErrorMessage', {nVms: nErrors}))
+      }
+
+      const choice = await chooseActionToUnblockForbiddenStartVm({
+        body: _('blockedStartVmsModalMessage', {nVms: forbiddenStart.length}),
+        title: _('forceStartVmModalTitle')
+      }).catch(noop)
+
+      if (nErrors !== 0) {
+        error(_('failedVmsErrorTitle'), _('failedVmsErrorMessage', {nVms: nErrors}))
+      }
+
+      if (choice === 'clone') {
+        return Promise.all(map(
+          forbiddenStart,
+          async id => cloneAndStartVM(getObject(store.getState(), id))
+        ))
+      }
+
+      if (choice === 'force') {
+        return Promise.all(map(
+          forbiddenStart,
+          id => _call('vm.start', { id, force: true })
+        ))
+      }
+    },
     noop
   )
 )

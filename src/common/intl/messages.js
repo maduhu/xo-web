@@ -18,7 +18,7 @@ var messages = {
   // ----- Modals -----
   alertOk: 'OK',
   confirmOk: 'OK',
-  confirmCancel: 'Cancel',
+  genericCancel: 'Cancel',
 
   // ----- Filters -----
   onError: 'On error',
@@ -492,6 +492,10 @@ var messages = {
   addSrLabel: 'Add SR',
   addVmLabel: 'Add VM',
   addHostLabel: 'Add Host',
+  hostNeedsPatchUpdate: 'This host needs to install {patches, number} patch{patches, plural, one {} other {es}} before it can be added to the pool. This operation may be long.',
+  hostNeedsPatchUpdateNoInstall: 'This host cannot be added to the pool because it\'s missing some patches.',
+  addHostErrorTitle: 'Adding host failed',
+  addHostNotHomogeneousErrorMessage: 'Host patches could not be homogenized.',
   disconnectServer: 'Disconnect',
 
   // ----- Host actions ------
@@ -605,7 +609,6 @@ var messages = {
   // ----- Pool patch tabs -----
   refreshPatches: 'Refresh patches',
   installPoolPatches: 'Install pool patches',
-  checkForUpdates: 'Check for updates',
   // ----- Pool storage tabs -----
   defaultSr: 'Default SR',
   setAsDefaultSr: 'Set as default SR',
@@ -681,6 +684,8 @@ var messages = {
   vdiBootOrder: 'Boot order',
   vdiNameLabel: 'Name',
   vdiNameDescription: 'Description',
+  vdiPool: 'Pool',
+  vdiDisconnect: 'Disconnect',
   vdiTags: 'Tags',
   vdiSize: 'Size',
   vdiSr: 'SR',
@@ -692,6 +697,7 @@ var messages = {
   vdiMigrateNoSrMessage: 'A target SR is required to migrate a VDI',
   vdiForget: 'Forget',
   vdiRemove: 'Remove VDI',
+  noControlDomainVdis: 'No VDIs attached to Control Domain',
   vbdBootableStatus: 'Boot flag',
   vbdStatus: 'Status',
   vbdStatusConnected: 'Connected',
@@ -858,6 +864,7 @@ var messages = {
   orphanedVms: 'Orphaned VMs snapshot',
   noOrphanedObject: 'No orphans',
   removeAllOrphanedObject: 'Remove all orphaned snapshot VDIs',
+  vdisOnControlDomain: 'VDIs attached to Control Domain',
   vmNameLabel: 'Name',
   vmNameDescription: 'Description',
   vmContainer: 'Resident on',
@@ -1039,7 +1046,14 @@ var messages = {
   restartHostsModalTitle: 'Restart Host{nHosts, plural, one {} other {s}}',
   restartHostsModalMessage: 'Are you sure you want to restart {nHosts, number} Host{nHosts, plural, one {} other {s}}?',
   startVmsModalTitle: 'Start VM{vms, plural, one {} other {s}}',
+  cloneAndStartVM: 'Start a copy',
+  forceStartVm: 'Force start',
+  forceStartVmModalTitle: 'Forbidden operation',
+  blockedStartVmModalMessage: 'Start operation for this vm is blocked.',
+  blockedStartVmsModalMessage: 'Forbidden operation start for {nVms, number} vm{nVms, plural, one {} other {s}}.',
   startVmsModalMessage: 'Are you sure you want to start {vms, number} VM{vms, plural, one {} other {s}}?',
+  failedVmsErrorMessage: '{nVms, number} vm{nVms, plural, one {} other {s}} are failed. Please see your logs to get more information',
+  failedVmsErrorTitle: 'Start failed',
   stopHostsModalTitle: 'Stop Host{nHosts, plural, one {} other {s}}',
   stopHostsModalMessage: 'Are you sure you want to stop {nHosts, number} Host{nHosts, plural, one {} other {s}}?',
   stopVmsModalTitle: 'Stop VM{vms, plural, one {} other {s}}',
