@@ -358,12 +358,12 @@ export default ({
               }
             </td>
           </tr>
-          <tr>
+          {container && <tr>
             <th>{_('vmCpuTopology')}</th>
             <td>
               <CoresPerSocket container={container} vm={vm} />
             </td>
-          </tr>
+          </tr>}
           <tr>
             <th>{_('vmMemoryLimitsLabel')}</th>
             <td>

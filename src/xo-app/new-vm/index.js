@@ -842,6 +842,7 @@ export default class NewVm extends BaseComponent {
 
   _renderPerformances = () => {
     const { CPUs, memoryDynamicMax, coresPerSocket } = this.state.state
+    const { pool } = this.props
 
     return <Section icon='new-vm-perf' title='newVmPerfPanel' done={this._isPerformancesDone()}>
       <SectionContent>
@@ -862,7 +863,7 @@ export default class NewVm extends BaseComponent {
             value={firstDefined(memoryDynamicMax, null)}
           />
         </Item>
-        <Item label={_('vmCpuTopology')}>
+        {pool && <Item label={_('vmCpuTopology')}>
           <select
             className='form-control'
             onChange={this._linkState('coresPerSocket')}
@@ -880,7 +881,7 @@ export default class NewVm extends BaseComponent {
               )
             )}
           </select>
-        </Item>
+        </Item>}
       </SectionContent>
     </Section>
   }
