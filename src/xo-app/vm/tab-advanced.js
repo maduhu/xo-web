@@ -135,39 +135,51 @@ class CoresPerSocket extends Component {
   _onChange = event => editVm(this.props.vm, { coresPerSocket: getEventValue(event) || null })
 
   render () {
-    const vm = this.props.vm
+    const {
+      container,
+      vm
+    } = this.props
     const selectedCoresPerSocket = vm.coresPerSocket
     const options = this._getCoresPerSocketPossibilities()
 
     return <form className='form-inline'>
-      <select
-        className='form-control'
-        onChange={this._onChange}
-        value={selectedCoresPerSocket || ''}
-      >
-        {_('vmChooseCoresPerSocket', message => <option value=''>{message}</option>)}
-        {this._selectedValueIsNotInOptions() &&
-          _('vmCoresPerSocketIncorrectValue', message => <option value={selectedCoresPerSocket}> {message}</option>)
-        }
-        {map(
-          options,
-          coresPerSocket => _(
-            'vmCoresPerSocket', {
-              nSockets: vm.CPUs.number / coresPerSocket,
-              nCores: coresPerSocket
-            },
-            message => <option key={coresPerSocket} value={coresPerSocket}>{message}</option>
-          )
-        )}
-      </select>
-      {' '}
-      {this._selectedValueIsNotInOptions() &&
-        <Tooltip content={_('vmCoresPerSocketIncorrectValueSolution')}>
-          <Icon
-            icon='error'
-            size='lg'
-          />
-        </Tooltip>
+      {container
+        ? <div>
+          <select
+            className='form-control'
+            onChange={this._onChange}
+            value={selectedCoresPerSocket || ''}
+          >
+            {_('vmChooseCoresPerSocket', message => <option value=''>{message}</option>)}
+            {this._selectedValueIsNotInOptions() &&
+              _('vmCoresPerSocketIncorrectValue', message => <option value={selectedCoresPerSocket}>{message}</option>)
+            }
+            {map(
+              options,
+              coresPerSocket => _(
+                'vmCoresPerSocket', {
+                  nSockets: vm.CPUs.number / coresPerSocket,
+                  nCores: coresPerSocket
+                },
+                message => <option key={coresPerSocket} value={coresPerSocket}>{message}</option>
+              )
+            )}
+          </select>
+          {' '}
+          {this._selectedValueIsNotInOptions() &&
+            <Tooltip content={_('vmCoresPerSocketIncorrectValueSolution')}>
+              <Icon
+                icon='error'
+                size='lg'
+              />
+            </Tooltip>
+          }
+        </div>
+        : _(
+          'vmCoresPerSocket',
+          {nSockets: vm.CPUs.number / selectedCoresPerSocket, nCores: selectedCoresPerSocket},
+          message => <span>{message}</span>
+        )
       }
     </form>
   }
@@ -358,12 +370,12 @@ export default ({
               }
             </td>
           </tr>
-          {container && <tr>
+          <tr>
             <th>{_('vmCpuTopology')}</th>
             <td>
               <CoresPerSocket container={container} vm={vm} />
             </td>
-          </tr>}
+          </tr>
           <tr>
             <th>{_('vmMemoryLimitsLabel')}</th>
             <td>
