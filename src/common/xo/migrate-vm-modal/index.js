@@ -181,6 +181,8 @@ export default class MigrateVmModalBody extends BaseComponent {
         doNotMigrateVdis,
         host,
         intraPool,
+        mainSr: undefined,
+        mapVdisSrs: {},
         mapVifsNetworks: undefined,
         migrationNetwork: undefined
       })
@@ -211,6 +213,8 @@ export default class MigrateVmModalBody extends BaseComponent {
       doNotMigrateVdis: false,
       host,
       intraPool,
+      mainSr: undefined,
+      mapVdisSrs: {},
       mapVifsNetworks: defaultNetworksForVif,
       migrationNetworkId: defaultMigrationNetworkId
     })
@@ -224,6 +228,8 @@ export default class MigrateVmModalBody extends BaseComponent {
       doNotMigrateVdis,
       host,
       intraPool,
+      mainSr,
+      mapVdisSrs,
       mapVifsNetworks,
       migrationNetworkId
     } = this.state
@@ -244,8 +250,10 @@ export default class MigrateVmModalBody extends BaseComponent {
         <SingleLineRow>
           <Col size={12}>
             <ChooseSrForEachVdisModal
+              mainSr={mainSr}
+              mainSrPredicate={this._getSrPredicate()}
+              mapVdisSrs={mapVdisSrs}
               onChange={props => this.setState(props)}
-              predicate={this._getSrPredicate()}
               vdis={vdis}
             />
           </Col>

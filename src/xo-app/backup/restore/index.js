@@ -5,7 +5,6 @@ import every from 'lodash/every'
 import filter from 'lodash/filter'
 import find from 'lodash/find'
 import forEach from 'lodash/forEach'
-import getEventValue from 'get-event-value'
 import groupBy from 'lodash/groupBy'
 import Icon from 'icon'
 import isEmpty from 'lodash/isEmpty'
@@ -120,44 +119,49 @@ class _ModalBody extends Component {
   }
 
   _getSrPredicate = createSelector(
-    () => this.state.sr,
+    () => this.state.mainSr,
     () => this.state.mapVdisSrs,
-    (defaultSr, mapVdisSrs) => sr =>
-      sr !== defaultSr &&
+    (mainSr, mapVdisSrs) => sr =>
       isSrWritable(sr) &&
-      defaultSr.$pool === sr.$pool &&
-      areSrsCompatible(defaultSr, sr) &&
+      mainSr.$pool === sr.$pool &&
+      areSrsCompatible(mainSr, sr) &&
       every(mapVdisSrs, selectedSr => selectedSr == null || areSrsCompatible(selectedSr, sr))
   )
 
-  _onChangeDefaultSr = event => {
-    const oldSr = this.state.sr
-    const newSr = getEventValue(event)
+  _onChange = props => {
+    if (props.mainSr !== undefined) {
+      const newMainSr = props.mainSr
+      const oldMainSr = this.state.mainSr
 
-    if (oldSr == null || newSr == null || oldSr.$pool !== newSr.$pool) {
-      this.setState({
-        mapVdisSrs: {}
-      })
-    } else if (!newSr.shared) {
-      const mapVdisSrs = {...this.state.mapVdisSrs}
-      forEach(mapVdisSrs, (sr, vdi) => {
-        if (sr != null && newSr !== sr && sr.$container !== newSr.$container && !sr.shared) {
-          delete mapVdisSrs[vdi]
-        }
-      })
-      this.setState({
-        mapVdisSrs
-      })
+      if (oldMainSr == null || newMainSr == null || oldMainSr.$pool !== newMainSr.$pool) {
+        this.setState({
+          mapVdisSrs: {}
+        })
+      } else if (!newMainSr.shared) {
+        const mapVdisSrs = {...this.state.mapVdisSrs}
+        forEach(mapVdisSrs, (sr, vdi) => {
+          if (sr != null && newMainSr !== sr && sr.$container !== newMainSr.$container && !sr.shared) {
+            delete mapVdisSrs[vdi]
+          }
+        })
+        this.setState({mapVdisSrs})
+      }
     }
 
-    this.setState({
-      sr: newSr
-    })
+    this.setState(props)
   }
 
   render () {
-    const { backups, intl } = this.props
-    const vdis = this.state.backup && this.state.backup.vdis
+    const { props, state } = this
+    const vdis = state.backup && state.backup.vdis
+    const {
+      backups,
+      intl
+    } = props
+    const {
+      mainSr,
+      mapVdisSrs
+    } = state
 
     return <div>
       <SelectPlainObject
@@ -169,8 +173,11 @@ class _ModalBody extends Component {
       />
       <br />
       <ChooseSrForEachVdisModal
+        mainSr={mainSr}
+        mapVdisSrs={mapVdisSrs}
+        onChange={this._onChange}
+        srPredicate={this._getSrPredicate()}
         vdis={vdis}
-        onChange={props => this.setState(props)}
       />
       <br />
       <Toggle onChange={this.linkState('start')} /> {_('importBackupModalStart')}
