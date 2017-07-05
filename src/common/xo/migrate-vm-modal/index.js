@@ -75,8 +75,8 @@ export default class MigrateVmModalBody extends BaseComponent {
     super(props)
 
     this.state = {
-      mapVdisSrs: {},
-      mapVifsNetworks: {}
+      mapVifsNetworks: {},
+      value: {}
     }
 
     this._getHostPredicate = createSelector(
@@ -181,10 +181,9 @@ export default class MigrateVmModalBody extends BaseComponent {
         doNotMigrateVdis,
         host,
         intraPool,
-        mainSr: undefined,
-        mapVdisSrs: {},
         mapVifsNetworks: undefined,
-        migrationNetwork: undefined
+        migrationNetwork: undefined,
+        value: {}
       })
       return
     }
@@ -213,14 +212,27 @@ export default class MigrateVmModalBody extends BaseComponent {
       doNotMigrateVdis: false,
       host,
       intraPool,
-      mainSr: undefined,
-      mapVdisSrs: {},
       mapVifsNetworks: defaultNetworksForVif,
-      migrationNetworkId: defaultMigrationNetworkId
+      migrationNetworkId: defaultMigrationNetworkId,
+      value: {}
     })
   }
 
   _selectMigrationNetwork = migrationNetwork => this.setState({ migrationNetworkId: migrationNetwork.id })
+
+  _onChange = props => {
+    const value = {...this.state.value}
+
+    if (props.mainSr !== undefined) {
+      value.mainSr = props.mainSr
+    }
+
+    if (props.mapVdisSrs !== undefined) {
+      value.mapVdisSrs = props.mapVdisSrs
+    }
+
+    this.setState({ value })
+  }
 
   render () {
     const { vdis, vifs, networks } = this.props
@@ -228,10 +240,9 @@ export default class MigrateVmModalBody extends BaseComponent {
       doNotMigrateVdis,
       host,
       intraPool,
-      mainSr,
-      mapVdisSrs,
       mapVifsNetworks,
-      migrationNetworkId
+      migrationNetworkId,
+      value
     } = this.state
     return <div>
       <div className={styles.block}>
@@ -250,10 +261,9 @@ export default class MigrateVmModalBody extends BaseComponent {
         <SingleLineRow>
           <Col size={12}>
             <ChooseSrForEachVdisModal
-              mainSr={mainSr}
               mainSrPredicate={this._getSrPredicate()}
-              mapVdisSrs={mapVdisSrs}
-              onChange={props => this.setState(props)}
+              onChange={this._onChange}
+              value={value}
               vdis={vdis}
             />
           </Col>
