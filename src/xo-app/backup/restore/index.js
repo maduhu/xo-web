@@ -124,7 +124,7 @@ class _ModalBody extends Component {
       every(mapVdisSrs, selectedSr => selectedSr == null || areSrsCompatible(selectedSr, sr))
   )
 
-  _onChange = props => {
+  _onSrsChange = props => {
     const oldMainSr = this.state.targetSrs.mainSr
     const newMainSr = props.mainSr
 
@@ -160,7 +160,7 @@ class _ModalBody extends Component {
       />
       <br />
       <ChooseSrForEachVdisModal
-        onChange={this._onChange}
+        onChange={this._onSrsChange}
         srPredicate={this._getSrPredicate()}
         value={state.targetSrs}
         vdis={vdis}
