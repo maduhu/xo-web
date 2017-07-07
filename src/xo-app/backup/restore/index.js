@@ -1,5 +1,5 @@
-import React from 'react'
 import _, { messages } from 'intl'
+import React from 'react'
 import { FormattedDate, injectIntl } from 'react-intl'
 import {
   every,
@@ -190,17 +190,17 @@ export default class Restore extends Component {
   }
 
   _listAll = async remotes => {
-    const remotesInfo = await Promise.all(map(remotes, async remote => listRemoteBackups(remote.id)))
+    const remotesBackups = await Promise.all(map(remotes, remote => listRemoteBackups(remote.id)))
 
     const backupInfoByVm = {}
 
-    forEach(remotesInfo, (remoteInfo, index) => {
+    forEach(remotesBackups, (remoteBackups, index) => {
       const {
         id: remoteId,
         name: remoteName
       } = remotes[index]
 
-      forEach(remoteInfo, backupInfo => {
+      forEach(remoteBackups, backupInfo => {
         const {
           datetime,
           disks,
@@ -220,7 +220,7 @@ export default class Restore extends Component {
           type
         }
 
-        if (backupInfo.type === 'delta') {
+        if (type === 'delta') {
           backup.path = /^(.*)\..*$/.exec(id)[1]
           backup.id = uuid
           backup.vdis = disks
