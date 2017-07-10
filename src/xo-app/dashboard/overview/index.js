@@ -23,11 +23,13 @@ import {
   isAdmin
 } from 'selectors'
 import {
+  addSubscriptions,
   connectStore,
   formatSize
 } from 'utils'
 import {
   isSrWritable,
+  subscribeResourceSets,
   subscribeUsers
 } from 'xo'
 
@@ -63,6 +65,11 @@ class PatchesCard extends Component {
 
 // ===================================================================
 
+@addSubscriptions({
+  resourceSetsQuotas: cb => subscribeResourceSets(resourceSets => {
+    cb(resourceSets[0] != null && resourceSets[0].limits)
+  })
+})
 @connectStore(() => {
   const getHosts = createGetObjectsOfType('host')
   const getVms = createGetObjectsOfType('VM')
@@ -154,10 +161,47 @@ export default class Overview extends Component {
       this.setState({ users })
     })
   }
+
+  _getMetrics = () => {
+    const { props } = this
+    if (props.isAdmin || props.resourceSetsQuotas == null) {
+      return {
+        diskTotal: props.srMetrics.srTotal,
+        diskUsage: props.srMetrics.srUsage,
+        memoryTotal: props.hostMetrics.memoryTotal,
+        memoryUsage: props.hostMetrics.memoryUsage,
+        cpusTotal: props.hostMetrics.cpus,
+        cpusUsage: props.vmMetrics.vcpus
+      }
+    }
+
+    const resources = ['disk', 'memory', 'cpus']
+    const metrics = {}
+    forEach(resources, resource => {
+      if (props.resourceSetsQuotas[resource] != null) {
+        metrics[`${resource}Total`] = props.resourceSetsQuotas[resource].total
+        metrics[`${resource}Usage`] = props.resourceSetsQuotas[resource].total - props.resourceSetsQuotas[resource].available
+      } else {
+        metrics[`${resource}Total`] = metrics[`${resource}Usage`] = 0
+      }
+    })
+
+    return metrics
+  }
+
   render () {
     const { props, state } = this
     const users = state && state.users
     const nUsers = size(users)
+
+    const {
+      diskTotal: srTotal,
+      diskUsage: srUsage,
+      memoryTotal,
+      memoryUsage,
+      cpusTotal: cpus,
+      cpusUsage: vcpus
+    } = this._getMetrics()
 
     return process.env.XOA_PLAN > 2
         ? <Container>
@@ -209,15 +253,15 @@ export default class Overview extends Component {
                   <ChartistGraph
                     data={{
                       labels: ['Used Memory', 'Total Memory'],
-                      series: [props.hostMetrics.memoryUsage, props.hostMetrics.memoryTotal - props.hostMetrics.memoryUsage]
+                      series: [memoryUsage, memoryTotal - memoryUsage]
                     }}
                     options={{ donut: true, donutWidth: 40, showLabel: false }}
                     type='Pie'
                   />
                   <p className='text-xs-center'>
                     {_('ofUsage', {
-                      total: formatSize(props.hostMetrics.memoryTotal),
-                      usage: formatSize(props.hostMetrics.memoryUsage)
+                      total: formatSize(memoryTotal),
+                      usage: formatSize(memoryUsage)
                     })}
                   </p>
                 </CardBlock>
@@ -233,15 +277,15 @@ export default class Overview extends Component {
                     <ChartistGraph
                       data={{
                         labels: ['vCPUs', 'CPUs'],
-                        series: [props.vmMetrics.vcpus, props.hostMetrics.cpus]
+                        series: [vcpus, cpus]
                       }}
                       options={{ showLabel: false, showGrid: false, distributeSeries: true }}
                       type='Bar'
                     />
                     <p className='text-xs-center'>
                       {_('ofUsage', {
-                        total: `${props.hostMetrics.cpus} CPUs`,
-                        usage: `${props.vmMetrics.vcpus} vCPUs`
+                        total: `${cpus} CPUs`,
+                        usage: `${vcpus} vCPUs`
                       })}
                     </p>
                   </div>
@@ -259,15 +303,15 @@ export default class Overview extends Component {
                       <ChartistGraph
                         data={{
                           labels: ['Used Space', 'Total Space'],
-                          series: [props.srMetrics.srUsage, props.srMetrics.srTotal - props.srMetrics.srUsage]
+                          series: [srUsage, srTotal - srUsage]
                         }}
                         options={{ donut: true, donutWidth: 40, showLabel: false }}
                         type='Pie'
                       />
                       <p className='text-xs-center'>
                         {_('ofUsage', {
-                          total: formatSize(props.srMetrics.srTotal),
-                          usage: formatSize(props.srMetrics.srUsage)
+                          total: formatSize(srTotal),
+                          usage: formatSize(srUsage)
                         })}
                       </p>
                     </BlockLink>
