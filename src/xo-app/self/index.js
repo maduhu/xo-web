@@ -491,9 +491,11 @@ export class Edit extends Component {
 @addSubscriptions({
   ipPools: subscribeIpPools
 })
+@injectIntl
 class ResourceSet extends Component {
   _renderDisplay = () => {
     const { resourceSet } = this.props
+    const { formatMessage } = this.props.intl
     const resolvedIpPools = mapKeys(this.props.ipPools, 'id')
     const {
       limits: {
@@ -543,14 +545,17 @@ class ResourceSet extends Component {
                   <div>
                     <ChartistGraph
                       data={{
-                        labels: [ 'Available', 'Used' ],
+                        labels: [ formatMessage(messages.availableResourceLabel), formatMessage(messages.usedResourceLabel) ],
                         series: [ cpus.available, cpus.total - cpus.available ]
                       }}
                       options={{ donut: true, donutWidth: 40, showLabel: false }}
                       type='Pie'
                     />
                     <p className='text-xs-center'>
-                      {_('usedResource')} {cpus.total - cpus.available} ({_('totalResource')} {cpus.total})
+                      {_('resourceSetQuota', {
+                        total: cpus.total.toString(),
+                        usage: (cpus.total - cpus.available).toString()
+                      })}
                     </p>
                   </div>
                 ) : (
@@ -569,14 +574,17 @@ class ResourceSet extends Component {
                   <div>
                     <ChartistGraph
                       data={{
-                        labels: [ 'Available', 'Used' ],
+                        labels: [ formatMessage(messages.availableResourceLabel), formatMessage(messages.usedResourceLabel) ],
                         series: [ memory.available, memory.total - memory.available ]
                       }}
                       options={{ donut: true, donutWidth: 40, showLabel: false }}
                       type='Pie'
                     />
                     <p className='text-xs-center'>
-                      {_('usedResource')} {formatSize(memory.total - memory.available)} ({_('totalResource')} {formatSize(memory.total)})
+                      {_('resourceSetQuota', {
+                        total: formatSize(memory.total),
+                        usage: formatSize(memory.total - memory.available)
+                      })}
                     </p>
                   </div>
                 ) : (
@@ -595,14 +603,17 @@ class ResourceSet extends Component {
                   <div>
                     <ChartistGraph
                       data={{
-                        labels: [ 'Available', 'Used' ],
+                        labels: [ formatMessage(messages.availableResourceLabel), formatMessage(messages.usedResourceLabel) ],
                         series: [ disk.available, disk.total - disk.available ]
                       }}
                       options={{ donut: true, donutWidth: 40, showLabel: false }}
                       type='Pie'
                     />
                     <p className='text-xs-center'>
-                      {_('usedResource')} {formatSize(disk.total - disk.available)} ({_('totalResource')} {formatSize(disk.total)})
+                      {_('resourceSetQuota', {
+                        total: formatSize(disk.total),
+                        usage: formatSize(disk.total - disk.available)
+                      })}
                     </p>
                   </div>
                 ) : (
