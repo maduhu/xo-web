@@ -69,11 +69,11 @@ import {
   firstDefined,
   formatSize,
   getCoresPerSocketPossibilities,
+  generateReadableRandomString,
   noop,
   resolveResourceSet
 } from 'utils'
 import {
-  createFilter,
   createSelector,
   createGetObject,
   createGetObjectsOfType,
@@ -89,8 +89,6 @@ const NB_VMS_MAX = 100
 /* eslint-disable camelcase */
 
 const getObject = createGetObject((_, id) => id)
-
-const returnTrue = () => true
 
 // Sub-components
 
@@ -240,9 +238,6 @@ export default class NewVm extends BaseComponent {
 
 // Utils -----------------------------------------------------------------------
 
-  getUniqueId () {
-    return this._uniqueId++
-  }
   get _isDiskTemplate () {
     const { template } = this.state.state
     return template &&
@@ -403,7 +398,7 @@ export default class NewVm extends BaseComponent {
       }
       const vdi = getObject(storeState, vbd.VDI, resourceSet)
       if (vdi) {
-        existingDisks[this.getUniqueId()] = {
+        existingDisks[vbd.position] = {
           name_label: vdi.name_label,
           name_description: vdi.name_description,
           size: vdi.size,
@@ -418,7 +413,6 @@ export default class NewVm extends BaseComponent {
     forEach(template.VIFs, vifId => {
       const vif = getObject(storeState, vifId, resourceSet)
       VIFs.push({
-        id: this.getUniqueId(),
         network: pool || isInResourceSet(vif.$network)
           ? vif.$network
           : resourceSet.objectsByType['network'][0].id
@@ -427,7 +421,6 @@ export default class NewVm extends BaseComponent {
     if (VIFs.length === 0) {
       const networkId = this._getDefaultNetworkId()
       VIFs.push({
-        id: this.getUniqueId(),
         network: networkId
       })
     }
@@ -454,12 +447,10 @@ export default class NewVm extends BaseComponent {
       // disks
       existingDisks,
       VDIs: map(template.template_info.disks, disk => {
-        const device = String(this.getUniqueId())
         return {
           ...disk,
-          device,
           name_description: disk.name_description || 'Created by XO',
-          name_label: (name_label || 'disk') + '_' + device,
+          name_label: (name_label || 'disk') + '_' + generateReadableRandomString(5),
           SR: pool
             ? pool.default_SR
             : resourceSet.objectsByType['SR'][0].id
@@ -493,13 +484,6 @@ export default class NewVm extends BaseComponent {
     objectsIds => id => includes(objectsIds, id)
   )
 
-  _getCanOperate = createSelector(
-    () => this.props.isAdmin,
-    () => this.props.permissions,
-    (isAdmin, permissions) => isAdmin
-      ? returnTrue
-      : ({ id }) => permissions && permissions[id] && permissions[id].operate
-  )
   _getVmPredicate = createSelector(
     this._getIsInPool,
     this._getIsInResourceSet,
@@ -548,11 +532,7 @@ export default class NewVm extends BaseComponent {
     },
     (networks, poolId) => filter(networks, network => network.$pool === poolId)
   )
-  _getOperatablePools = createFilter(
-    () => this.props.pools,
-    this._getCanOperate,
-    [ (pool, canOperate) => canOperate(pool) ]
-  )
+
   _getAffinityHostPredicate = createSelector(
     () => this.props.pool,
     () => this.state.state.existingDisks,
@@ -655,12 +635,10 @@ export default class NewVm extends BaseComponent {
   _addVdi = () => {
     const { state } = this.state
     const { pool } = this.props
-    const device = String(this.getUniqueId())
 
     this._setState({ VDIs: [ ...state.VDIs, {
-      device,
       name_description: 'Created by XO',
-      name_label: (state.name_label || 'disk') + '_' + device,
+      name_label: (state.name_label || 'disk') + '_' + generateReadableRandomString(5),
       SR: pool && pool.default_SR,
       type: 'system'
     }] })
@@ -674,7 +652,6 @@ export default class NewVm extends BaseComponent {
     const networkId = this._getDefaultNetworkId()
 
     this._setState({ VIFs: [ ...this.state.state.VIFs, {
-      id: this.getUniqueId(),
       network: networkId
     }] })
   }
@@ -709,13 +686,10 @@ export default class NewVm extends BaseComponent {
 // MAIN ------------------------------------------------------------------------
 
   _renderHeader = () => {
-    const { pool } = this.props
-    const showSelectPool = !isEmpty(this._getOperatablePools())
-    const showSelectResourceSet = !this.props.isAdmin && !isEmpty(this.props.resourceSets)
+    const {isAdmin, pool, resourceSets} = this.props
     const selectPool = <span className={styles.inlineSelect}>
       <SelectPool
         onChange={this._selectPool}
-        predicate={this._getCanOperate()}
         value={pool}
       />
     </span>
@@ -729,14 +703,9 @@ export default class NewVm extends BaseComponent {
       <Row>
         <Col mediumSize={12}>
           <h2>
-            {showSelectPool && showSelectResourceSet
-              ? _('newVmCreateNewVmOn2', {
-                select1: selectPool,
-                select2: selectResourceSet
-              })
-              : showSelectPool || showSelectResourceSet
+            {isAdmin || !isEmpty(resourceSets)
               ? _('newVmCreateNewVmOn', {
-                select: showSelectPool ? selectPool : selectResourceSet
+                select: isAdmin ? selectPool : selectResourceSet
               })
               : _('newVmCreateNewVmNoPermission')
             }
@@ -1190,7 +1159,7 @@ export default class NewVm extends BaseComponent {
         </div>)}
 
         {/* VDIs */}
-        {map(VDIs, (vdi, index) => <div key={vdi.device}>
+        {map(VDIs, (vdi, index) => <div key={index}>
           <LineItem>
             <Item label={_('newVmSrLabel')}>
               <span className={styles.inlineSelect}>
@@ -1276,6 +1245,7 @@ export default class NewVm extends BaseComponent {
       showAdvanced,
       tags
     } = this.state.state
+    const { isAdmin } = this.props
     const { formatMessage } = this.props.intl
     return <Section icon='new-vm-advanced' title='newVmAdvancedPanel' done={this._isAdvancedDone()}>
       <SectionContent column>
@@ -1411,7 +1381,7 @@ export default class NewVm extends BaseComponent {
             )}
           </LineItem>}
         </SectionContent>,
-        <SectionContent>
+        isAdmin && <SectionContent>
           <Item label={_('newVmAffinityHost')}>
             <SelectHost
               onChange={this._linkState('affinityHost')}
